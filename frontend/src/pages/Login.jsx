@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { GoogleIcon, AppleIcon } from './assets/Icons';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate();
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    navigate('/dashboard');
+  };
 
   return (
     <div className="min-h-screen bg-background font-sans text-navy selection:bg-primary/30 relative flex items-center justify-center p-4 overflow-hidden">
@@ -34,7 +40,7 @@ const Login = () => {
             </p>
           </div>
 
-          {/* SOCIAL LOGIN */}
+           {/* SOCIAL LOGIN */}
           <div className="grid grid-cols-2 gap-4 mb-8">
             <button className="flex items-center justify-center py-4 px-6 bg-white border border-gray-100 rounded-2xl hover:bg-gray-50 hover:shadow-sm transition-all group">
               <GoogleIcon />
@@ -53,10 +59,10 @@ const Login = () => {
             <span className="relative px-4 bg-white text-gray-400 text-[10px] font-black uppercase tracking-widest">
               or continue with email
             </span>
-          </div>
+          </div>      
 
           {/* LOGIN FORM */}
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2 ml-1">Email Address</label>
               <input 
@@ -67,11 +73,11 @@ const Login = () => {
                 className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-navy placeholder:text-gray-300"
               />
             </div>
-            <div>
+            <div>  
               <div className="flex justify-between items-center mb-2 ml-1">
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-500">Password</label>
                 <a href="#" className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-green-600 transition-colors">Forgot?</a>
-              </div>
+              </div>     
               <input 
                 type="password" 
                 value={password}
