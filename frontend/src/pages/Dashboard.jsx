@@ -1,7 +1,64 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 
 export default function Dashboard() {
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [monthlySpending, setMonthlySpending] = useState(0);
+  const [categoryTotals, setCategoryTotals] = useState({ housing: 0, food: 0, entertainment: 0, other: 0 });
+
+  useEffect(() => {
+    const saved = localStorage.getItem('fingrow_expenses');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setRecentTransactions(parsed.slice(0, 4)); // Get top 4 recent
+        // Calculate total spending and categories
+        let total = 0;
+        let housing = 0;
+        let food = 0;
+        let entertainment = 0;
+        let other = 0;
+
+        parsed.forEach(curr => {
+          const num = parseFloat(curr.amount.replace(/[^0-9.]/g, ""));
+          const amt = isNaN(num) ? 0 : num;
+          total += amt;
+
+          const cat = curr.category ? curr.category.toLowerCase() : '';
+          if (cat.includes('housing')) {
+            housing += amt;
+          } else if (cat.includes('grocer') || cat.includes('food')) {
+            food += amt;
+          } else if (cat.includes('entertain')) {
+            entertainment += amt;
+          } else {
+            other += amt;
+          }
+        });
+
+        setMonthlySpending(total);
+        setCategoryTotals({ housing, food, entertainment, other });
+      } catch (e) {
+        console.error("Error parsing expenses", e);
+      }
+    }
+  }, []);
+
+  // Calculate percentages for donut
+  const totalCat = monthlySpending || 1; // avoid divide by zero
+  const p1 = Math.round((categoryTotals.housing / totalCat) * 100);
+  const p2 = Math.round((categoryTotals.food / totalCat) * 100);
+  const p3 = Math.round((categoryTotals.entertainment / totalCat) * 100);
+  const p4 = 100 - p1 - p2 - p3; // other
+
+  const offset2 = -p1;
+  const offset3 = offset2 - p2;
+  const offset4 = offset3 - p3;
+
+  const formatCurrency = (num) => {
+    return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   return (
     <Layout>
       <div className="flex flex-col gap-6 max-w-6xl mx-auto pb-10">
@@ -40,7 +97,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-gray-900 mb-1">$3,120.45</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">{monthlySpending > 0 ? formatCurrency(monthlySpending) : '$3,120.45'}</div>
               <div className="text-[10px] font-semibold text-blue-500 flex items-center gap-1">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
                 12% under budget
@@ -97,17 +154,14 @@ export default function Dashboard() {
               {/* CSS Donut Chart */}
               <div className="relative w-48 h-48 mb-8">
                 <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
-                  {/* Housing (Green) ~47% */}
-                  <circle strokeDasharray="47, 100" stroke="#16a34a" strokeWidth="4" fill="none" r="16" cx="18" cy="18" />
-                  {/* Food & Drink (Blue) ~26% */}
-                  <circle strokeDasharray="26, 100" strokeDashoffset="-47" stroke="#0284c7" strokeWidth="4" fill="none" r="16" cx="18" cy="18" />
-                  {/* Entertainment (Light Green) ~15% */}
-                  <circle strokeDasharray="15, 100" strokeDashoffset="-73" stroke="#84cc16" strokeWidth="4" fill="none" r="16" cx="18" cy="18" />
-                  {/* Gap between slices via transparent strokes (simplification) */}
+                  <circle strokeDasharray={`${p1}, 100`} stroke="#16a34a" strokeWidth="4" fill="none" r="16" cx="18" cy="18" />
+                  <circle strokeDasharray={`${p2}, 100`} strokeDashoffset={offset2} stroke="#0284c7" strokeWidth="4" fill="none" r="16" cx="18" cy="18" />
+                  <circle strokeDasharray={`${p3}, 100`} strokeDashoffset={offset3} stroke="#84cc16" strokeWidth="4" fill="none" r="16" cx="18" cy="18" />
+                  <circle strokeDasharray={`${p4}, 100`} strokeDashoffset={offset4} stroke="#f97316" strokeWidth="4" fill="none" r="16" cx="18" cy="18" />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-[10px] font-semibold text-gray-400">Total</span>
-                  <span className="text-lg font-bold text-gray-900">$3.1k</span>
+                  <span className="text-lg font-bold text-gray-900">{monthlySpending > 0 ? formatCurrency(monthlySpending) : '$0'}</span>
                 </div>
               </div>
 
@@ -116,19 +170,25 @@ export default function Dashboard() {
                   <div className="flex items-center gap-2 text-gray-600 font-medium">
                     <div className="w-2.5 h-2.5 rounded-full bg-[#16a34a]"></div> Housing
                   </div>
-                  <span className="font-bold text-gray-900">$1,450</span>
+                  <span className="font-bold text-gray-900">{formatCurrency(categoryTotals.housing)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2 text-gray-600 font-medium">
                     <div className="w-2.5 h-2.5 rounded-full bg-[#0284c7]"></div> Food & Drink
                   </div>
-                  <span className="font-bold text-gray-900">$820</span>
+                  <span className="font-bold text-gray-900">{formatCurrency(categoryTotals.food)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2 text-gray-600 font-medium">
                     <div className="w-2.5 h-2.5 rounded-full bg-[#84cc16]"></div> Entertainment
                   </div>
-                  <span className="font-bold text-gray-900">$450</span>
+                  <span className="font-bold text-gray-900">{formatCurrency(categoryTotals.entertainment)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <div className="flex items-center gap-2 text-gray-600 font-medium">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#f97316]"></div> Other
+                  </div>
+                  <span className="font-bold text-gray-900">{formatCurrency(categoryTotals.other)}</span>
                 </div>
               </div>
             </div>
@@ -159,81 +219,71 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  <tr className="hover:bg-gray-50/50 transition-colors group">
-                    <td className="py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
+                  {recentTransactions.length > 0 ? recentTransactions.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-gray-50/50 transition-colors group">
+                      <td className="py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${tx.color === 'orange' ? 'bg-orange-100 text-orange-500' : tx.color === 'blue' ? 'bg-blue-100 text-blue-500' : tx.color === 'purple' ? 'bg-purple-100 text-purple-500' : 'bg-green-100 text-green-500'}`}>
+                            {tx.icon === 'cart' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>}
+                            {tx.icon === 'car' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>}
+                            {tx.icon === 'monitor' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>}
+                            {tx.icon === 'home' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>}
+                          </div>
+                          <div>
+                            <div className="font-bold text-sm text-gray-900">{tx.title}</div>
+                            <div className="text-[11px] text-gray-400 font-medium">{tx.subtitle}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-bold text-sm text-gray-900">Starbucks Reserve</div>
-                          <div className="text-[11px] text-gray-400 font-medium">Coffee shop</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-100 text-blue-800">FOOD</span>
-                    </td>
-                    <td className="py-4 whitespace-nowrap text-xs text-gray-500 font-medium">Oct 24, 2023</td>
-                    <td className="py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">-$14.50</td>
-                  </tr>
+                      </td>
+                      <td className="py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${tx.color === 'orange' ? 'bg-orange-100 text-orange-800' : tx.color === 'blue' ? 'bg-blue-100 text-blue-800' : tx.color === 'purple' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}`}>
+                          {tx.category}
+                        </span>
+                      </td>
+                      <td className="py-4 whitespace-nowrap text-xs text-gray-500 font-medium">{tx.date.split(',')[0]}</td>
+                      <td className="py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">{tx.amount}</td>
+                    </tr>
+                  )) : (
+                    <>
+                      <tr className="hover:bg-gray-50/50 transition-colors group">
+                        <td className="py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
+                            </div>
+                            <div>
+                              <div className="font-bold text-sm text-gray-900">Starbucks Reserve</div>
+                              <div className="text-[11px] text-gray-400 font-medium">Coffee shop</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-100 text-blue-800">FOOD</span>
+                        </td>
+                        <td className="py-4 whitespace-nowrap text-xs text-gray-500 font-medium">Oct 24, 2023</td>
+                        <td className="py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">-$14.50</td>
+                      </tr>
 
-                  <tr className="hover:bg-gray-50/50 transition-colors group">
-                    <td className="py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-                        </div>
-                        <div>
-                          <div className="font-bold text-sm text-gray-900">TechCorp Inc.</div>
-                          <div className="text-[11px] text-gray-400 font-medium">Monthly Salary</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-green-200 text-green-800">INCOME</span>
-                    </td>
-                    <td className="py-4 whitespace-nowrap text-xs text-gray-500 font-medium">Oct 23, 2023</td>
-                    <td className="py-4 whitespace-nowrap text-sm font-bold text-green-700 text-right">+$4,200.00</td>
-                  </tr>
-
-                  <tr className="hover:bg-gray-50/50 transition-colors group">
-                    <td className="py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center flex-shrink-0">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-                        </div>
-                        <div>
-                          <div className="font-bold text-sm text-gray-900">Whole Foods Market</div>
-                          <div className="text-[11px] text-gray-400 font-medium">Groceries</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-100 text-blue-800">FOOD</span>
-                    </td>
-                    <td className="py-4 whitespace-nowrap text-xs text-gray-500 font-medium">Oct 22, 2023</td>
-                    <td className="py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">-$124.80</td>
-                  </tr>
-
-                  <tr className="hover:bg-gray-50/50 transition-colors group">
-                    <td className="py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-500 flex items-center justify-center flex-shrink-0">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
-                        </div>
-                        <div>
-                          <div className="font-bold text-sm text-gray-900">Uber Trip</div>
-                          <div className="text-[11px] text-gray-400 font-medium">Transport</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-[#bbf7d0] text-green-800">TRANSPORT</span>
-                    </td>
-                    <td className="py-4 whitespace-nowrap text-xs text-gray-500 font-medium">Oct 21, 2023</td>
-                    <td className="py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">-$32.00</td>
-                  </tr>
+                      <tr className="hover:bg-gray-50/50 transition-colors group">
+                        <td className="py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                            </div>
+                            <div>
+                              <div className="font-bold text-sm text-gray-900">TechCorp Inc.</div>
+                              <div className="text-[11px] text-gray-400 font-medium">Monthly Salary</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black bg-green-200 text-green-800">INCOME</span>
+                        </td>
+                        <td className="py-4 whitespace-nowrap text-xs text-gray-500 font-medium">Oct 23, 2023</td>
+                        <td className="py-4 whitespace-nowrap text-sm font-bold text-green-700 text-right">+$4,200.00</td>
+                      </tr>
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
