@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 
-const expenses = [
+const defaultExpenses = [
   { id: 1, date: 'Oct 24, 2023', title: 'Whole Foods Market', subtitle: 'Weekly organic grocery run', category: 'Groceries', amount: '-$142.50', icon: 'cart', color: 'orange' },
   { id: 2, date: 'Oct 22, 2023', title: 'Gas Station', subtitle: 'Fuel for the weekend trip', category: 'Transport', amount: '-$58.00', icon: 'car', color: 'blue' },
   { id: 3, date: 'Oct 20, 2023', title: 'Netflix Subscription', subtitle: 'Monthly premium plan', category: 'Entertainment', amount: '-$19.99', icon: 'monitor', color: 'purple' },
@@ -9,6 +9,118 @@ const expenses = [
 ];
 
 export default function Expenses() {
+  const [expenses, setExpenses] = useState(() => {
+    const saved = localStorage.getItem('fingrow_expenses');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return defaultExpenses;
+      }
+    }
+    return defaultExpenses;
+  });
+
+  // Form State
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('');
+  const [customCategory, setCustomCategory] = useState('');
+  const [date, setDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [sortOrder, setSortOrder] = useState('newest');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+
+  // Persist to local storage whenever expenses change
+  useEffect(() => {
+    localStorage.setItem('fingrow_expenses', JSON.stringify(expenses));
+  }, [expenses]);
+
+  const handleAddExpense = (e) => {
+    e.preventDefault();
+    if (!amount || !category || !date) return;
+
+    // Determine visual styling based on category
+    let icon = 'cart';
+    let color = 'orange';
+    let title = 'New Expense';
+    let catDisplay = 'General';
+
+    if (category === 'groceries') {
+      icon = 'cart'; color = 'orange'; title = 'Grocery Store'; catDisplay = 'Groceries';
+    } else if (category === 'transport') {
+      icon = 'car'; color = 'blue'; title = 'Transportation'; catDisplay = 'Transport';
+    } else if (category === 'entertainment') {
+      icon = 'monitor'; color = 'purple'; title = 'Entertainment'; catDisplay = 'Entertainment';
+    } else if (category === 'housing') {
+      icon = 'home'; color = 'green'; title = 'Housing / Rent'; catDisplay = 'Housing';
+    } else if (category === 'other') {
+      icon = 'monitor'; color = 'orange'; title = customCategory || 'Other'; catDisplay = customCategory || 'Other';
+    } else {
+      catDisplay = category.charAt(0).toUpperCase() + category.slice(1);
+    }
+
+    const newExpense = {
+      id: Date.now(),
+      date: date,
+      title: title,
+      subtitle: notes || 'Added via dashboard',
+      category: catDisplay,
+      amount: `-$${parseFloat(amount).toFixed(2)}`,
+      icon: icon,
+      color: color
+    };
+
+    setExpenses([newExpense, ...expenses]);
+
+    // Reset Form
+    setAmount('');
+    setCategory('');
+    setCustomCategory('');
+    setDate('');
+    setNotes('');
+  };
+
+  // Calculate budget stats dynamically
+  const BUDGET_LIMIT = 2000;
+  const totalSpent = expenses.reduce((acc, curr) => {
+    // extract number from string like "-$142.50"
+    const num = parseFloat(curr.amount.replace(/[^0-9.]/g, ""));
+    return acc + (isNaN(num) ? 0 : num);
+  }, 0);
+
+  const remaining = BUDGET_LIMIT - totalSpent;
+  const progressPercentage = Math.min((totalSpent / BUDGET_LIMIT) * 100, 100);
+
+  // Formatting helper
+  const formatCurrency = (num) => {
+    return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  };
+
+  // Filtering and Sorting Logic
+  const uniqueCategories = ['All', ...new Set(expenses.map(e => e.category))];
+
+  const filteredExpenses = expenses.filter(expense => {
+    if (categoryFilter === 'All') return true;
+    return expense.category === categoryFilter;
+  });
+
+  const sortedExpenses = [...filteredExpenses].sort((a, b) => {
+    if (sortOrder === 'newest') {
+      return b.id - a.id;
+    } else if (sortOrder === 'oldest') {
+      return a.id - b.id;
+    } else if (sortOrder === 'highest' || sortOrder === 'lowest') {
+      const amtA = parseFloat(a.amount.replace(/[^0-9.]/g, ""));
+      const amtB = parseFloat(b.amount.replace(/[^0-9.]/g, ""));
+      if (sortOrder === 'highest') {
+        return amtB - amtA;
+      } else {
+        return amtA - amtB;
+      }
+    }
+    return 0;
+  });
+
   return (
     <Layout>
       <div className="flex flex-col gap-6 max-w-6xl mx-auto h-full">
@@ -36,55 +148,102 @@ export default function Expenses() {
                 Add Expense
               </h3>
               
-              <div className="space-y-4">
+              <form onSubmit={handleAddExpense} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Amount</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <span className="text-gray-500 font-medium">$</span>
                     </div>
-                    <input type="text" placeholder="0.00" className="block w-full pl-8 pr-4 py-2.5 bg-gray-50 border-transparent rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:bg-white transition-colors" />
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      required
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="0.00" 
+                      className="block w-full pl-8 pr-4 py-2.5 bg-gray-50 border-transparent rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:bg-white transition-colors outline-none" 
+                    />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Category</label>
-                  <select className="block w-full px-4 py-2.5 bg-gray-50 border-transparent rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:bg-white transition-colors appearance-none relative">
-                    <option value="" disabled selected>Select category</option>
+                  <select 
+                    required
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="block w-full px-4 py-2.5 bg-gray-50 border-transparent rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:bg-white transition-colors appearance-none relative outline-none cursor-pointer"
+                  >
+                    <option value="" disabled>Select category</option>
                     <option value="groceries">Groceries</option>
                     <option value="transport">Transport</option>
+                    <option value="entertainment">Entertainment</option>
+                    <option value="housing">Housing</option>
+                    <option value="other">Other</option>
                   </select>
                 </div>
 
+                {category === 'other' && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Custom Category Name</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      placeholder="e.g. Health, Education..." 
+                      className="block w-full px-4 py-2.5 bg-gray-50 border-transparent rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:bg-white transition-colors outline-none" 
+                    />
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date</label>
-                  <input type="text" placeholder="mm/dd/yyyy" className="block w-full px-4 py-2.5 bg-gray-50 border-transparent rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:bg-white transition-colors" />
+                  <input 
+                    type="text" 
+                    required
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    placeholder="e.g. Oct 25, 2023" 
+                    className="block w-full px-4 py-2.5 bg-gray-50 border-transparent rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:bg-white transition-colors outline-none" 
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Notes</label>
-                  <textarea rows="3" placeholder="What was this for?" className="block w-full px-4 py-2.5 bg-gray-50 border-transparent rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:bg-white transition-colors resize-none"></textarea>
+                  <textarea 
+                    rows="3" 
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="What was this for?" 
+                    className="block w-full px-4 py-2.5 bg-gray-50 border-transparent rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:bg-white transition-colors resize-none outline-none"
+                  ></textarea>
                 </div>
 
-                <button className="w-full mt-2 bg-primary hover:bg-green-600 text-white font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm">
+                <button type="submit" className="w-full mt-2 bg-primary hover:bg-green-600 text-white font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
                   Add Expense
                 </button>
-              </div>
+              </form>
             </div>
 
             {/* Budget Status */}
             <div className="bg-primary rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
               <div className="relative z-10">
                 <p className="text-sm font-medium text-green-100 mb-1">Monthly Budget Status</p>
-                <div className="text-2xl font-bold mb-4">$1,240 / $2,000</div>
+                <div className="text-2xl font-bold mb-4">{formatCurrency(totalSpent)} / {formatCurrency(BUDGET_LIMIT)}</div>
                 
                 <div className="h-2.5 w-full bg-green-700/50 rounded-full mb-3 overflow-hidden">
-                  <div className="h-full bg-white rounded-full" style={{ width: '62%' }}></div>
+                  <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
                 </div>
                 
                 <p className="text-sm font-medium text-green-50">
-                  You have $760 remaining this month.<br/>Good job!
+                  {remaining >= 0 ? (
+                    <>You have <span className="font-bold">{formatCurrency(remaining)}</span> remaining this month.<br/>Good job!</>
+                  ) : (
+                    <>You are <span className="font-bold">{formatCurrency(Math.abs(remaining))}</span> over budget.<br/>Be careful!</>
+                  )}
                 </p>
               </div>
               <div className="absolute right-[-20px] bottom-[-20px] opacity-10 pointer-events-none transform scale-[2]">
@@ -104,17 +263,39 @@ export default function Expenses() {
                 </button>
                 <div className="w-px h-6 bg-gray-200"></div>
                 <div className="flex items-center gap-2">
-                  <select className="text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer outline-none">
-                    <option>All Categories</option>
+                  <select 
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer outline-none"
+                  >
+                    {uniqueCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat === 'All' ? 'All Categories' : cat}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="flex items-center gap-2 ml-2">
-                  <select className="text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer outline-none">
-                    <option>This Month</option>
+                  <select 
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    className="text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer outline-none"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="highest">Highest Price</option>
+                    <option value="lowest">Lowest Price</option>
                   </select>
                 </div>
               </div>
-              <button className="text-sm font-semibold text-blue-600 hover:text-blue-700">Clear All</button>
+              <button 
+                className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+                onClick={() => {
+                  if(window.confirm('Are you sure you want to clear all expenses?')) {
+                    setExpenses([]);
+                  }
+                }}
+              >
+                Clear All
+              </button>
             </div>
 
             {/* Table */}
@@ -130,11 +311,19 @@ export default function Expenses() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {expenses.map((expense) => (
+                  {sortedExpenses.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-12 text-center text-gray-500 font-medium">
+                        No expenses yet. Add one to get started!
+                      </td>
+                    </tr>
+                  ) : null}
+                  {sortedExpenses.map((expense) => (
                     <tr key={expense.id} className="hover:bg-gray-50/50 transition-colors group">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900 w-16 whitespace-normal leading-tight">
-                          {expense.date.split(',')[0]},<br/><span className="text-gray-500 font-normal">{expense.date.split(',')[1]}</span>
+                          {expense.date.split(',')[0] ? expense.date.split(',')[0] + ',' : expense.date}<br/>
+                          {expense.date.split(',')[1] && <span className="text-gray-500 font-normal">{expense.date.split(',')[1]}</span>}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -160,8 +349,15 @@ export default function Expenses() {
                         <span className="text-sm font-bold text-gray-900">{expense.amount}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                        <button 
+                          className="text-gray-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                          onClick={() => {
+                            if(window.confirm('Delete this expense?')) {
+                              setExpenses(expenses.filter(e => e.id !== expense.id));
+                            }
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                         </button>
                       </td>
                     </tr>
@@ -172,7 +368,7 @@ export default function Expenses() {
 
             {/* Pagination */}
             <div className="p-4 border-t border-gray-50 flex items-center justify-between text-sm text-gray-500 font-medium">
-              <div>Showing 4 of 24 expenses</div>
+              <div>Showing {Math.min(expenses.length, 4)} of {expenses.length} expenses</div>
               <div className="flex items-center gap-2">
                 <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-400 hover:text-gray-600 transition-colors">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
