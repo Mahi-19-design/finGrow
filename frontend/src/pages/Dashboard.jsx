@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import SEO from '../components/SEO';
+import api from '../services/api';
 
 export default function Dashboard() {
   const [recentTransactions, setRecentTransactions] = useState([]);
@@ -76,11 +77,9 @@ export default function Dashboard() {
     setCategoryTotals({ housing, food, entertainment, other });
     
     // Calculate dynamic totals based on profile
-    fetch('http://localhost:5000/api/profile', {
-      headers: { 'Authorization': 'Bearer mock_token' }
-    })
-      .then(res => res.json())
-      .then(data => {
+    api.get('/profile')
+      .then(response => {
+        const data = response.data;
         if (data && data.fullName) {
           setProfile(data);
           setTotalBalance(data.monthlyIncome + totalInc - totalExp);

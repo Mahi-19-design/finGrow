@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
+import api from '../services/api';
 
 export default function Profile() {
   const [profile, setProfile] = useState({
@@ -27,16 +28,9 @@ export default function Profile() {
         setExpenses(totalExp);
 
         // Fetch profile from backend
-        // We use a mock token or assume auth middleware falls back to mock user
-        const response = await fetch('http://localhost:5000/api/profile', {
-          headers: {
-            'Authorization': 'Bearer mock_token' // Replace with actual token from auth
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setProfile(data);
+        const response = await api.get('/profile');
+        if (response.data) {
+          setProfile(response.data);
         }
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -87,18 +81,9 @@ export default function Profile() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer mock_token'
-        },
-        body: JSON.stringify(profile)
-      });
-      if (response.ok) {
+      const response = await api.put('/profile', profile);
+      if (response.data) {
         setMessage('Profile updated successfully!');
-      } else {
-        setMessage('Failed to update profile.');
       }
     } catch (error) {
       setMessage('Error connecting to server.');
