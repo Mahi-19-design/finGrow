@@ -1,163 +1,260 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 
 export default function Investments() {
+  const [formData, setFormData] = useState({
+    monthlyIncome: '',
+    monthlyExpenses: '',
+    currentSavings: '',
+    riskAppetite: 'Medium',
+    investmentDuration: 'Long-term'
+  });
+  const [recommendation, setRecommendation] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Auto-fill from localStorage if possible (assuming Expense Tracker data is there)
+  useEffect(() => {
+    try {
+      const expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+      const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
+      if (totalExpenses > 0) {
+        setFormData(prev => ({ ...prev, monthlyExpenses: totalExpenses }));
+      }
+    } catch (e) {
+      console.log('Error reading local storage', e);
+    }
+  }, []);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const fetchRecommendation = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setRecommendation(null);
+    try {
+      const response = await fetch('http://localhost:5000/api/investments/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setRecommendation(data);
+      } else {
+        setError(data.error || 'Failed to fetch recommendation');
+      }
+    } catch (err) {
+      setError('Could not connect to the recommendation server. Please ensure the backend is running.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Layout>
-      <div className="flex flex-col gap-10 max-w-5xl mx-auto h-full pb-10">
+      <div className="flex flex-col gap-8 max-w-6xl mx-auto h-full pb-10">
         
         {/* Header */}
         <div>
-          <h2 className="text-xl font-medium text-gray-800 mb-2">Invest with Confidence</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Smart Investment Engine</h2>
           <p className="text-gray-500 max-w-2xl text-sm leading-relaxed">
-            We've simplified complex markets into clear, stress-free paths. Choose the pace that feels right for your future.
+            Get an AI-driven, personalized investment strategy based on your real financial data, savings capacity, and risk tolerance.
           </p>
         </div>
 
-        {/* Investment Options Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Low Risk */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col hover:shadow-md transition-shadow relative">
-            <div className="flex items-center justify-between mb-6">
-              <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              </div>
-              <span className="text-xs font-semibold text-green-700 bg-green-50 px-3 py-1 rounded-full">Low Risk</span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Column: Input Form */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-800 mb-5">Financial Profile</h3>
+              <form onSubmit={fetchRecommendation} className="space-y-4">
+                
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Monthly Income (₹)</label>
+                  <input 
+                    type="number" name="monthlyIncome" value={formData.monthlyIncome} onChange={handleInputChange} required
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0b5c2a] focus:outline-none"
+                    placeholder="e.g. 80000"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Monthly Expenses (₹)</label>
+                  <input 
+                    type="number" name="monthlyExpenses" value={formData.monthlyExpenses} onChange={handleInputChange} required
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0b5c2a] focus:outline-none"
+                    placeholder="e.g. 40000"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Current Total Savings (₹)</label>
+                  <input 
+                    type="number" name="currentSavings" value={formData.currentSavings} onChange={handleInputChange} required
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0b5c2a] focus:outline-none"
+                    placeholder="e.g. 150000"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Risk Appetite</label>
+                  <select name="riskAppetite" value={formData.riskAppetite} onChange={handleInputChange}
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0b5c2a] focus:outline-none"
+                  >
+                    <option value="Low">Low (Safe, Stable Returns)</option>
+                    <option value="Medium">Medium (Balanced Growth)</option>
+                    <option value="High">High (Aggressive Growth)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Investment Duration</label>
+                  <select name="investmentDuration" value={formData.investmentDuration} onChange={handleInputChange}
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0b5c2a] focus:outline-none"
+                  >
+                    <option value="Short-term">Short-term (&lt; 3 Years)</option>
+                    <option value="Long-term">Long-term (3+ Years)</option>
+                  </select>
+                </div>
+
+                <button 
+                  type="submit" disabled={loading}
+                  className={`w-full py-3 rounded-xl text-sm font-semibold text-white shadow-md transition-all ${loading ? 'bg-gray-400' : 'bg-green-700 hover:bg-green-800'}`}
+                >
+                  {loading ? 'Analyzing...' : 'Generate Plan'}
+                </button>
+              </form>
+              {error && <p className="text-red-500 text-xs mt-3">{error}</p>}
             </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Safe Growth</h3>
-            <p className="text-xs text-gray-500 leading-relaxed flex-1">
-              Keep your money safe while earning more than a regular savings account. Great for short-term goals.
-            </p>
-            <div className="my-6">
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-green-700">2-4%</span>
-                <span className="text-[10px] text-gray-400 font-semibold">Est. Return</span>
-              </div>
-            </div>
-            <button className="w-full bg-green-700 hover:bg-green-800 text-white font-semibold py-3 rounded-xl transition-colors text-sm shadow-sm">
-              Start Investing
-            </button>
           </div>
 
-          {/* Medium Risk */}
-          <div className="bg-white p-6 rounded-2xl shadow-xl shadow-blue-50 border-2 border-blue-100 flex flex-col relative z-10 scale-105">
-            <div className="absolute -top-3 right-6 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm">
-              POPULAR
-            </div>
-            <div className="flex items-center justify-between mb-6">
-              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><rect width="4" height="4" x="4" y="10" rx="1"/><rect width="4" height="4" x="16" y="10" rx="1"/><path d="M6 10V6h12v4"/></svg>
+          {/* Right Column: Results Display */}
+          <div className="lg:col-span-8">
+            {!recommendation && !loading && (
+              <div className="bg-gray-50/50 rounded-2xl border border-dashed border-gray-300 h-full min-h-[400px] flex flex-col items-center justify-center p-8 text-center">
+                <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 text-green-700">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                </div>
+                <h4 className="text-gray-800 font-medium mb-2">Awaiting Your Details</h4>
+                <p className="text-gray-500 text-sm max-w-xs">Fill out the financial profile to receive a personalized, data-driven investment breakdown.</p>
               </div>
-              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">Medium Risk</span>
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Balanced Fund</h3>
-            <p className="text-xs text-gray-500 leading-relaxed flex-1">
-              A mix of stocks and bonds designed to grow your wealth steadily without too much of a rollercoaster ride.
-            </p>
-            <div className="my-6">
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-blue-600">5-8%</span>
-                <span className="text-[10px] text-gray-400 font-semibold">Est. Return</span>
-              </div>
-            </div>
-            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors text-sm shadow-sm">
-              Start Investing
-            </button>
-          </div>
+            )}
 
-          {/* High Risk */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col hover:shadow-md transition-shadow relative">
-            <div className="flex items-center justify-between mb-6">
-              <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+            {loading && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 h-full min-h-[400px] flex flex-col items-center justify-center p-8 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mb-4"></div>
+                <p className="text-gray-500 text-sm">Crunching the numbers & fetching real-time market data...</p>
               </div>
-              <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">High Risk</span>
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Aggressive Growth</h3>
-            <p className="text-xs text-gray-500 leading-relaxed flex-1">
-              Focus on maximum potential returns by investing in fast-growing companies. Best for long-term horizons.
-            </p>
-            <div className="my-6">
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-green-800">10-14%</span>
-                <span className="text-[10px] text-gray-400 font-semibold">Est. Return</span>
+            )}
+
+            {recommendation && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* Status Alert */}
+                <div className={`p-4 rounded-xl border flex gap-3 ${recommendation.status === 'warning' ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
+                  <div className="mt-0.5">
+                    {recommendation.status === 'warning' ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">{recommendation.status === 'warning' ? 'Action Required' : 'Optimal Portfolio Found'}</h4>
+                    <p className="text-xs">{recommendation.message}</p>
+                  </div>
+                </div>
+
+                {/* Core Metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
+                    <p className="text-[10px] uppercase font-semibold text-gray-500 mb-1">Savings Rate</p>
+                    <p className="text-xl font-bold text-gray-900">{recommendation.calculations.savingsRate}%</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
+                    <p className="text-[10px] uppercase font-semibold text-gray-500 mb-1">Disposable Inc.</p>
+                    <p className="text-xl font-bold text-gray-900">₹{recommendation.calculations.disposableIncome}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
+                    <p className="text-[10px] uppercase font-semibold text-gray-500 mb-1">Emergency Goal</p>
+                    <p className="text-xl font-bold text-gray-900">₹{recommendation.calculations.emergencyFundRequirement}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
+                    <p className="text-[10px] uppercase font-semibold text-gray-500 mb-1">Investment Score</p>
+                    <p className="text-xl font-bold text-[#0b5c2a]">{recommendation.calculations.investmentScore || 'N/A'}</p>
+                  </div>
+                </div>
+
+                {/* Portfolio Allocation */}
+                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Recommended Allocation</h3>
+                      <p className="text-xs text-gray-500 mt-1">Profile: <span className="font-medium text-gray-700">{recommendation.recommendation.profile}</span> • Target Return: <span className="font-medium text-green-700">{recommendation.expectedReturn}</span></p>
+                    </div>
+                  </div>
+
+                  {/* Allocation Visual Bar */}
+                  <div className="w-full h-4 rounded-full overflow-hidden flex mb-6 shadow-inner">
+                    {recommendation.recommendation.allocation.map((item, i) => {
+                      const colors = ['bg-green-600', 'bg-blue-500', 'bg-orange-400', 'bg-purple-500'];
+                      return <div key={i} style={{ width: `${item.percentage}%` }} className={`${colors[i % colors.length]} h-full`} title={`${item.asset}: ${item.percentage}%`}></div>
+                    })}
+                  </div>
+
+                  {/* Allocation Details */}
+                  <div className="space-y-3">
+                    {recommendation.recommendation.allocation.map((item, i) => {
+                      const colors = ['text-green-600 bg-green-50', 'text-blue-600 bg-blue-50', 'text-orange-600 bg-orange-50', 'text-purple-600 bg-purple-50'];
+                      return (
+                        <div key={i} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors border border-transparent hover:border-gray-100">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${colors[i % colors.length]}`}>
+                              {item.percentage}%
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">{item.asset}</p>
+                              {item.symbol && <p className="text-[10px] text-gray-500 font-medium tracking-wide">TICKER: {item.symbol}</p>}
+                            </div>
+                          </div>
+                          {item.price && (
+                            <div className="text-right">
+                              <p className="text-sm font-medium text-gray-900">${item.price.toFixed(2)}</p>
+                              <p className={`text-[10px] font-semibold ${item.trend.startsWith('+') ? 'text-green-600' : 'text-red-500'}`}>
+                                {item.trend}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Bonus Projection Feature */}
+                {recommendation.projections && (
+                  <div className="bg-gradient-to-br from-navy to-blue-900 p-6 rounded-2xl text-white shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                      <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><path d="m2 12 5.25 5 2.625-3L15 19l7-14"/></svg>
+                    </div>
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        <h4 className="font-semibold text-sm text-yellow-400">Wealth Multiplier Insights</h4>
+                      </div>
+                      <p className="text-sm leading-relaxed text-blue-100">{recommendation.projections.whatIf}</p>
+                    </div>
+                  </div>
+                )}
+                
               </div>
-            </div>
-            <button className="w-full bg-[#3d6e15] hover:bg-[#2d520f] text-white font-semibold py-3 rounded-xl transition-colors text-sm shadow-sm">
-              Start Investing
-            </button>
+            )}
           </div>
         </div>
-
-        {/* Guides Section */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-700">Investing made simple</h3>
-            <a href="#" className="text-xs font-semibold text-green-700 hover:text-green-800 flex items-center gap-1">
-              View all guides <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-            </a>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white p-5 rounded-xl border border-gray-100 flex gap-4 items-start shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-              <div className="w-8 h-8 rounded-full bg-green-50 text-green-700 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              </div>
-              <div>
-                <h4 className="text-xs font-semibold text-gray-900 mb-1">Think Long Term</h4>
-                <p className="text-[11px] text-gray-500 leading-relaxed">The best results come from staying invested for years, not days or weeks.</p>
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-xl border border-gray-100 flex gap-4 items-start shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 3 3 9-3 9 19-9Z"/><path d="M6 12h16"/></svg>
-              </div>
-              <div>
-                <h4 className="text-xs font-semibold text-gray-900 mb-1">Compound Growth</h4>
-                <p className="text-[11px] text-gray-500 leading-relaxed">Your interest earns interest. Starting early is your biggest financial advantage.</p>
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-xl border border-gray-100 flex gap-4 items-start shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-              <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v10l5.5 5.5"/></svg>
-              </div>
-              <div>
-                <h4 className="text-xs font-semibold text-gray-900 mb-1">Diversify Always</h4>
-                <p className="text-[11px] text-gray-500 leading-relaxed">Don't put all your eggs in one basket. Spreading risk keeps your portfolio stable.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Quiz Banner */}
-        <div className="bg-green-50 rounded-2xl p-8 relative overflow-hidden shadow-inner border border-green-100/50 flex items-center">
-          <div className="relative z-10 max-w-sm">
-            <h3 className="text-lg font-medium text-green-900 mb-4">Not sure where to start?</h3>
-            <p className="text-sm text-green-800 leading-relaxed mb-8">
-              Take our 2-minute "Investor Style" quiz to get a personalized recommendation based on your goals.
-            </p>
-            <button className="bg-[#0b5c2a] hover:bg-green-900 text-white text-sm font-semibold py-3 px-6 rounded-full shadow-md transition-colors">
-              Take the Quiz
-            </button>
-          </div>
-          
-          {/* Abstract Image representing the chart from the design */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-80 h-80 bg-navy rounded-full mr-8 overflow-hidden shadow-2xl flex items-center justify-center border-4 border-navy/20">
-            <div className="w-full h-full opacity-60 bg-gradient-to-tr from-cyan-600 via-blue-800 to-navy relative flex items-end justify-center p-8">
-               {/* Abstract chart bars */}
-               <div className="flex items-end gap-1 w-full h-3/4 opacity-50">
-                  <div className="w-full bg-cyan-400 rounded-t h-1/6"></div>
-                  <div className="w-full bg-cyan-400 rounded-t h-2/6"></div>
-                  <div className="w-full bg-cyan-400 rounded-t h-3/6"></div>
-                  <div className="w-full bg-cyan-400 rounded-t h-2/6"></div>
-                  <div className="w-full bg-cyan-400 rounded-t h-4/6"></div>
-                  <div className="w-full bg-cyan-400 rounded-t h-5/6"></div>
-                  <div className="w-full bg-cyan-400 rounded-t h-4/6"></div>
-                  <div className="w-full bg-cyan-400 rounded-t h-full"></div>
-               </div>
-            </div>
-          </div>
-        </div>
-
       </div>
     </Layout>
   );
