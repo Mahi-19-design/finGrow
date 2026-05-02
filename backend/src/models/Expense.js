@@ -6,7 +6,8 @@ const expenseSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   category: { type: String, required: true },
   date: { type: Date, required: true, default: Date.now },
-  description: { type: String }
+  description: { type: String },
+  frequency: { type: String, enum: ['one-time', 'monthly', 'yearly'], default: 'one-time' }
 }, { timestamps: true });
 
 const Expense = mongoose.model('Expense', expenseSchema);

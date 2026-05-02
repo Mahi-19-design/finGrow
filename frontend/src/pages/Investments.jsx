@@ -14,17 +14,19 @@ export default function Investments() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Auto-fill from localStorage if possible (assuming Expense Tracker data is there)
+  // Auto-fill from Profile if possible
   useEffect(() => {
-    try {
-      const expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-      const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
-      if (totalExpenses > 0) {
-        setFormData(prev => ({ ...prev, monthlyExpenses: totalExpenses }));
-      }
-    } catch (e) {
-      console.log('Error reading local storage', e);
-    }
+    api.get('/profile')
+      .then(res => {
+        if (res.data) {
+          setFormData(prev => ({
+            ...prev,
+            monthlyIncome: res.data.monthlyIncome || '',
+            currentSavings: res.data.savings || ''
+          }));
+        }
+      })
+      .catch(err => console.error('Error fetching profile for investments:', err));
   }, []);
 
   const handleInputChange = (e) => {
@@ -215,7 +217,7 @@ export default function Investments() {
                           </div>
                           {item.price && (
                             <div className="text-right">
-                              <p className="text-sm font-medium text-gray-900">${item.price.toFixed(2)}</p>
+                              <p className="text-sm font-medium text-gray-900">₹{item.price.toLocaleString()}</p>
                               <p className={`text-[10px] font-semibold ${item.trend.startsWith('+') ? 'text-green-600' : 'text-red-500'}`}>
                                 {item.trend}
                               </p>

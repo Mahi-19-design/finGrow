@@ -9,6 +9,7 @@ import profileRoutes from './src/routes/profileRoutes.js';
 import authRoutes from './src/routes/authRoutes.js';
 import expenseRoutes from './src/routes/expenseRoutes.js';
 import notificationRoutes from './src/routes/notificationRoutes.js';
+import budgetRoutes from './src/routes/budgetRoutes.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/budgets', budgetRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

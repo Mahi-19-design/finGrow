@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
+import api from '../services/api';
+import { toast } from 'react-toastify';
 
 const defaultExpenses = [
   { id: 1, date: 'Oct 24, 2023', title: 'Whole Foods Market', subtitle: 'Weekly organic grocery run', category: 'Groceries', amount: '-$142.50', icon: 'cart', color: 'orange' },
@@ -9,91 +11,83 @@ const defaultExpenses = [
 ];
 
 export default function Expenses() {
-  const [expenses, setExpenses] = useState(() => {
-    const saved = localStorage.getItem('fingrow_expenses');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return defaultExpenses;
-      }
-    }
-    return defaultExpenses;
-  });
+  const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Form State
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [customCategory, setCustomCategory] = useState('');
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
+  const [frequency, setFrequency] = useState('one-time');
   const [sortOrder, setSortOrder] = useState('newest');
   const [categoryFilter, setCategoryFilter] = useState('All');
 
-  // Persist to local storage whenever expenses change
-  useEffect(() => {
-    localStorage.setItem('fingrow_expenses', JSON.stringify(expenses));
-  }, [expenses]);
+  const fetchExpenses = async () => {
+    try {
+      const response = await api.get('/expenses');
+      setExpenses(response.data);
+    } catch (err) {
+      toast.error('Failed to fetch expenses');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleAddExpense = (e) => {
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
+
+  const handleAddExpense = async (e) => {
     e.preventDefault();
     if (!amount || !category || !date) return;
 
-    // Determine visual styling based on category
-    let icon = 'cart';
-    let color = 'orange';
-    let title = 'New Expense';
-    let catDisplay = 'General';
+    try {
+      const payload = {
+        title: category === 'other' ? customCategory : category.charAt(0).toUpperCase() + category.slice(1),
+        amount: parseFloat(amount),
+        category: category === 'other' ? customCategory : category,
+        date,
+        description: notes,
+        frequency
+      };
 
-    if (category === 'groceries') {
-      icon = 'cart'; color = 'orange'; title = 'Grocery Store'; catDisplay = 'Groceries';
-    } else if (category === 'transport') {
-      icon = 'car'; color = 'blue'; title = 'Transportation'; catDisplay = 'Transport';
-    } else if (category === 'entertainment') {
-      icon = 'monitor'; color = 'purple'; title = 'Entertainment'; catDisplay = 'Entertainment';
-    } else if (category === 'housing') {
-      icon = 'home'; color = 'green'; title = 'Housing / Rent'; catDisplay = 'Housing';
-    } else if (category === 'other') {
-      icon = 'monitor'; color = 'orange'; title = customCategory || 'Other'; catDisplay = customCategory || 'Other';
-    } else {
-      catDisplay = category.charAt(0).toUpperCase() + category.slice(1);
+      const response = await api.post('/expenses', payload);
+      setExpenses([response.data, ...expenses]);
+      toast.success('Expense added successfully');
+
+      // Reset Form
+      setAmount('');
+      setCategory('');
+      setCustomCategory('');
+      setDate(new Date().toISOString().split('T')[0]);
+      setNotes('');
+      setFrequency('one-time');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to add expense');
     }
-
-    const newExpense = {
-      id: Date.now(),
-      date: date,
-      title: title,
-      subtitle: notes || 'Added via dashboard',
-      category: catDisplay,
-      amount: `-$${parseFloat(amount).toFixed(2)}`,
-      icon: icon,
-      color: color
-    };
-
-    setExpenses([newExpense, ...expenses]);
-
-    // Reset Form
-    setAmount('');
-    setCategory('');
-    setCustomCategory('');
-    setDate('');
-    setNotes('');
   };
 
   // Calculate budget stats dynamically
-  const BUDGET_LIMIT = 2000;
-  const totalSpent = expenses.reduce((acc, curr) => {
-    // extract number from string like "-$142.50"
-    const num = parseFloat(curr.amount.replace(/[^0-9.]/g, ""));
-    return acc + (isNaN(num) ? 0 : num);
-  }, 0);
+  const BUDGET_LIMIT = 20000;
+  const totalSpent = expenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
   const remaining = BUDGET_LIMIT - totalSpent;
   const progressPercentage = Math.min((totalSpent / BUDGET_LIMIT) * 100, 100);
 
   // Formatting helper
   const formatCurrency = (num) => {
-    return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return '₹' + num.toLocaleString('en-IN');
+  };
+
+  const getCategoryStyle = (cat) => {
+    const c = String(cat).toLowerCase();
+    if (c.includes('grocer') || c.includes('food')) return { icon: 'cart', color: 'orange', bg: 'bg-orange-100', text: 'text-orange-500', bgLight: 'bg-orange-50', textDark: 'text-orange-600' };
+    if (c.includes('transport') || c.includes('car')) return { icon: 'car', color: 'blue', bg: 'bg-blue-100', text: 'text-blue-500', bgLight: 'bg-blue-50', textDark: 'text-blue-600' };
+    if (c.includes('entertain') || c.includes('netflix')) return { icon: 'monitor', color: 'purple', bg: 'bg-purple-100', text: 'text-purple-500', bgLight: 'bg-purple-50', textDark: 'text-purple-600' };
+    if (c.includes('house') || c.includes('rent')) return { icon: 'home', color: 'green', bg: 'bg-green-100', text: 'text-green-500', bgLight: 'bg-green-50', textDark: 'text-green-600' };
+    return { icon: 'monitor', color: 'orange', bg: 'bg-orange-100', text: 'text-orange-500', bgLight: 'bg-orange-50', textDark: 'text-orange-600' };
   };
 
   // Filtering and Sorting Logic
@@ -106,20 +100,26 @@ export default function Expenses() {
 
   const sortedExpenses = [...filteredExpenses].sort((a, b) => {
     if (sortOrder === 'newest') {
-      return b.id - a.id;
+      return new Date(b.date) - new Date(a.date);
     } else if (sortOrder === 'oldest') {
-      return a.id - b.id;
-    } else if (sortOrder === 'highest' || sortOrder === 'lowest') {
-      const amtA = parseFloat(a.amount.replace(/[^0-9.]/g, ""));
-      const amtB = parseFloat(b.amount.replace(/[^0-9.]/g, ""));
-      if (sortOrder === 'highest') {
-        return amtB - amtA;
-      } else {
-        return amtA - amtB;
-      }
+      return new Date(a.date) - new Date(b.date);
+    } else if (sortOrder === 'highest') {
+      return b.amount - a.amount;
+    } else if (sortOrder === 'lowest') {
+      return a.amount - b.amount;
     }
     return 0;
   });
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -153,7 +153,7 @@ export default function Expenses() {
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Amount</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <span className="text-gray-500 font-medium">$</span>
+                      <span className="text-gray-500 font-medium">₹</span>
                     </div>
                     <input 
                       type="number" 
@@ -201,13 +201,25 @@ export default function Expenses() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Date</label>
                   <input 
-                    type="text" 
+                    type="date" 
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    placeholder="e.g. Oct 25, 2023" 
                     className="block w-full px-4 py-2.5 bg-gray-50 border-transparent rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:bg-white transition-colors outline-none" 
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Frequency</label>
+                  <select 
+                    value={frequency}
+                    onChange={(e) => setFrequency(e.target.value)}
+                    className="block w-full px-4 py-2.5 bg-gray-50 border-transparent rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:bg-white transition-colors outline-none cursor-pointer"
+                  >
+                    <option value="one-time">One-time</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
                 </div>
 
                 <div>
@@ -319,41 +331,47 @@ export default function Expenses() {
                     </tr>
                   ) : null}
                   {sortedExpenses.map((expense) => (
-                    <tr key={expense.id} className="hover:bg-gray-50/50 transition-colors group">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 w-16 whitespace-normal leading-tight">
-                          {expense.date.split(',')[0] ? expense.date.split(',')[0] + ',' : expense.date}<br/>
-                          {expense.date.split(',')[1] && <span className="text-gray-500 font-normal">{expense.date.split(',')[1]}</span>}
-                        </div>
+                    <tr key={expense._id} className="hover:bg-gray-50/50 transition-colors group">
+                      <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500 font-medium">
+                        {new Date(expense.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${expense.color === 'orange' ? 'bg-orange-100 text-orange-500' : expense.color === 'blue' ? 'bg-blue-100 text-blue-500' : expense.color === 'purple' ? 'bg-purple-100 text-purple-500' : 'bg-green-100 text-green-500'}`}>
-                            {expense.icon === 'cart' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>}
-                            {expense.icon === 'car' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>}
-                            {expense.icon === 'monitor' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>}
-                            {expense.icon === 'home' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>}
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${getCategoryStyle(expense.category).bg} ${getCategoryStyle(expense.category).text}`}>
+                            {getCategoryStyle(expense.category).icon === 'cart' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>}
+                            {getCategoryStyle(expense.category).icon === 'car' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>}
+                            {getCategoryStyle(expense.category).icon === 'monitor' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>}
+                            {getCategoryStyle(expense.category).icon === 'home' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>}
                           </div>
                           <div>
                             <p className="text-sm font-bold text-gray-900">{expense.title}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{expense.subtitle}</p>
+                            <p className="text-[10px] text-gray-400 font-medium italic mt-0.5 line-clamp-1">{expense.description}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${expense.color === 'orange' ? 'bg-orange-50 text-orange-600' : expense.color === 'blue' ? 'bg-blue-50 text-blue-600' : expense.color === 'purple' ? 'bg-purple-50 text-purple-600' : 'bg-green-50 text-green-600'}`}>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getCategoryStyle(expense.category).bgLight} ${getCategoryStyle(expense.category).textDark}`}>
                           {expense.category}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <span className="text-sm font-bold text-gray-900">{expense.amount}</span>
+                        <span className="text-sm font-bold text-gray-900">₹{expense.amount.toLocaleString()}</span>
+                        {expense.frequency !== 'one-time' && (
+                          <p className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">{expense.frequency}</p>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button 
                           className="text-gray-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                          onClick={() => {
+                          onClick={async () => {
                             if(window.confirm('Delete this expense?')) {
-                              setExpenses(expenses.filter(e => e.id !== expense.id));
+                              try {
+                                await api.delete(`/expenses/${expense._id}`);
+                                setExpenses(expenses.filter(e => e._id !== expense._id));
+                                toast.success('Expense deleted');
+                              } catch (err) {
+                                toast.error('Failed to delete expense');
+                              }
                             }
                           }}
                         >

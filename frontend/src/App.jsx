@@ -14,6 +14,7 @@ const Expenses = lazy(() => import('./pages/Expenses'));
 const Investments = lazy(() => import('./pages/Investments'));
 const Insights = lazy(() => import('./pages/Insights'));
 const Profile = lazy(() => import('./pages/Profile'));
+const Budgets = lazy(() => import('./pages/Budgets'));
 
 // Loading Fallback Component
 const PageLoader = () => (
@@ -38,6 +39,7 @@ const AppRoutes = () => {
         <Route path="/investments" element={<ProtectedRoute><Investments /></ProtectedRoute>} />
         <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/budgets" element={<ProtectedRoute><Budgets /></ProtectedRoute>} />
       </Routes>
     </Suspense>
   );
