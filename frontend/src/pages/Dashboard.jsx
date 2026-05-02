@@ -11,96 +11,52 @@ export default function Dashboard() {
   const [categoryTotals, setCategoryTotals] = useState({ housing: 0, food: 0, entertainment: 0, other: 0 });
   const [profile, setProfile] = useState(null);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('fingrow_expenses');
-    let parsed = null;
-    
-    if (saved) {
-      try {
-        parsed = JSON.parse(saved);
-      } catch (e) {
-        console.error("Error parsing expenses", e);
-      }
-    }
+  const fetchData = async () => {
+    try {
+      const [expensesRes, profileRes] = await Promise.all([
+        api.get('/expenses'),
+        api.get('/profile')
+      ]);
 
-    // Default mock data if no data exists in local storage or array is empty
-    if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
-      parsed = [
-        { id: 1, date: 'Oct 24, 2023', title: 'Whole Foods Market', subtitle: 'Weekly organic grocery run', category: 'Groceries', amount: '-$142.50', icon: 'cart', color: 'orange' },
-        { id: 2, date: 'Oct 22, 2023', title: 'Gas Station', subtitle: 'Fuel for the weekend trip', category: 'Transport', amount: '-$58.00', icon: 'car', color: 'blue' },
-        { id: 3, date: 'Oct 20, 2023', title: 'Netflix Subscription', subtitle: 'Monthly premium plan', category: 'Entertainment', amount: '-$19.99', icon: 'monitor', color: 'purple' },
-        { id: 4, date: 'Oct 19, 2023', title: 'Property Rent', subtitle: 'October rent payment', category: 'Housing', amount: '-$1,200.00', icon: 'home', color: 'green' },
-        { id: 5, date: 'Oct 15, 2023', title: 'TechCorp Inc.', subtitle: 'Monthly Salary', category: 'Income', amount: '+$4,200.00', icon: 'home', color: 'green' }
-      ];
-    }
+      const expenses = expensesRes.data;
+      const profileData = profileRes.data;
 
-    // Safely get top 4 recent
-    setRecentTransactions(parsed.slice(0, 4));
+      setRecentTransactions(expenses.slice(0, 4));
+      setProfile(profileData);
 
-    let totalExp = 0;
-    let totalInc = 0;
-    let housing = 0;
-    let food = 0;
-    let entertainment = 0;
-    let other = 0;
+      let totalExp = 0;
+      let housing = 0;
+      let food = 0;
+      let entertainment = 0;
+      let other = 0;
 
-    parsed.forEach(curr => {
-      try {
-        const amtStr = curr.amount ? String(curr.amount) : "0";
-        // Extract numbers and negative sign
-        const num = parseFloat(amtStr.replace(/[^0-9.-]/g, ""));
-        const amt = isNaN(num) ? 0 : num;
-
-        if (amtStr.includes('-') || amt < 0) {
-          const absAmt = Math.abs(amt);
-          totalExp += absAmt;
-          
-          const cat = curr.category ? String(curr.category).toLowerCase() : '';
-          if (cat.includes('housing')) {
-            housing += absAmt;
-          } else if (cat.includes('grocer') || cat.includes('food')) {
-            food += absAmt;
-          } else if (cat.includes('entertain')) {
-            entertainment += absAmt;
-          } else {
-            other += absAmt;
-          }
+      expenses.forEach(curr => {
+        const amt = parseFloat(curr.amount) || 0;
+        totalExp += amt;
+        
+        const cat = curr.category ? String(curr.category).toLowerCase() : '';
+        if (cat.includes('housing')) {
+          housing += amt;
+        } else if (cat.includes('grocer') || cat.includes('food')) {
+          food += amt;
+        } else if (cat.includes('entertain')) {
+          entertainment += amt;
         } else {
-          totalInc += amt;
+          other += amt;
         }
-      } catch (err) {
-        console.error("Error processing transaction", err);
-      }
-    });
-
-    setMonthlySpending(totalExp);
-    setCategoryTotals({ housing, food, entertainment, other });
-    
-    // Calculate dynamic totals based on profile
-    api.get('/profile')
-      .then(response => {
-        const data = response.data;
-        if (data && data.fullName) {
-          setProfile(data);
-          setTotalBalance(data.monthlyIncome + totalInc - totalExp);
-          setSavings(data.savings);
-        } else {
-          // Fallback
-          const baseBalance = 25000.00;
-          const baseSavings = 8500.00;
-          setTotalBalance(baseBalance + totalInc - totalExp);
-          const netIncome = totalInc - totalExp;
-          setSavings(baseSavings + (netIncome > 0 ? netIncome * 0.4 : netIncome * 0.1));
-        }
-      })
-      .catch(err => {
-        console.error('Error fetching profile for dashboard:', err);
-        const baseBalance = 25000.00;
-        const baseSavings = 8500.00;
-        setTotalBalance(baseBalance + totalInc - totalExp);
-        const netIncome = totalInc - totalExp;
-        setSavings(baseSavings + (netIncome > 0 ? netIncome * 0.4 : netIncome * 0.1));
       });
+
+      setMonthlySpending(totalExp);
+      setCategoryTotals({ housing, food, entertainment, other });
+      setTotalBalance(profileData.monthlyIncome - totalExp);
+      setSavings(profileData.savings);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   // Calculate percentages for donut chart safely
@@ -115,10 +71,17 @@ export default function Dashboard() {
   const offset4 = offset3 - p3;
 
   const formatCurrency = (num) => {
-    if (isNaN(num) || num === null || num === undefined) return '$0.00';
-    const isNegative = num < 0;
-    const formattedNum = Math.abs(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return isNegative ? `-$${formattedNum}` : `$${formattedNum}`;
+    if (isNaN(num) || num === null || num === undefined) return '₹0';
+    return '₹' + Math.abs(num).toLocaleString('en-IN');
+  };
+
+  const getCategoryStyle = (cat) => {
+    const c = String(cat).toLowerCase();
+    if (c.includes('grocer') || c.includes('food')) return { icon: 'cart', color: 'orange', bg: 'bg-orange-100', text: 'text-orange-500', bgLight: 'bg-orange-50', textDark: 'text-orange-800' };
+    if (c.includes('transport') || c.includes('car')) return { icon: 'car', color: 'blue', bg: 'bg-blue-100', text: 'text-blue-500', bgLight: 'bg-blue-50', textDark: 'text-blue-800' };
+    if (c.includes('entertain') || c.includes('netflix')) return { icon: 'monitor', color: 'purple', bg: 'bg-purple-100', text: 'text-purple-500', bgLight: 'bg-purple-50', textDark: 'text-purple-800' };
+    if (c.includes('house') || c.includes('rent')) return { icon: 'home', color: 'green', bg: 'bg-green-100', text: 'text-green-500', bgLight: 'bg-green-50', textDark: 'text-green-800' };
+    return { icon: 'monitor', color: 'orange', bg: 'bg-orange-100', text: 'text-orange-500', bgLight: 'bg-orange-50', textDark: 'text-orange-800' };
   };
 
   return (
@@ -182,9 +145,9 @@ export default function Dashboard() {
             <div>
               <div className="text-2xl font-bold text-gray-900 mb-2">{formatCurrency(savings)}</div>
               <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mb-1">
-                <div className="bg-green-700 h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, (savings / 12000) * 100))}%` }}></div>
+                <div className="bg-green-700 h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, (savings / 100000) * 100))}%` }}></div>
               </div>
-              <div className="text-[9px] font-medium text-gray-400">Goal: $12,000 New Car</div>
+              <div className="text-[9px] font-medium text-gray-400">Goal: ₹1,00,000 Emergency Fund</div>
             </div>
           </div>
 
@@ -197,7 +160,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-gray-900 mb-1">$12,540.20</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">₹85,000</div>
               <div className="text-[10px] font-semibold text-green-600 flex items-center gap-1">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
                 +8.1% YTD
@@ -292,28 +255,30 @@ export default function Dashboard() {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {recentTransactions.length > 0 ? recentTransactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-gray-50/50 transition-colors group">
+                    <tr key={tx._id} className="hover:bg-gray-50/50 transition-colors group">
                       <td className="py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${tx.color === 'orange' ? 'bg-orange-100 text-orange-500' : tx.color === 'blue' ? 'bg-blue-100 text-blue-500' : tx.color === 'purple' ? 'bg-purple-100 text-purple-500' : 'bg-green-100 text-green-500'}`}>
-                            {tx.icon === 'cart' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>}
-                            {tx.icon === 'car' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>}
-                            {tx.icon === 'monitor' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>}
-                            {tx.icon === 'home' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>}
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${getCategoryStyle(tx.category).bg} ${getCategoryStyle(tx.category).text}`}>
+                            {getCategoryStyle(tx.category).icon === 'cart' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>}
+                            {getCategoryStyle(tx.category).icon === 'car' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>}
+                            {getCategoryStyle(tx.category).icon === 'monitor' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>}
+                            {getCategoryStyle(tx.category).icon === 'home' && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>}
                           </div>
                           <div>
                             <div className="font-bold text-sm text-gray-900">{tx.title}</div>
-                            <div className="text-[11px] text-gray-400 font-medium">{tx.subtitle}</div>
+                            <div className="text-[11px] text-gray-400 font-medium line-clamp-1">{tx.description}</div>
                           </div>
                         </div>
                       </td>
                       <td className="py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${tx.color === 'orange' ? 'bg-orange-100 text-orange-800' : tx.color === 'blue' ? 'bg-blue-100 text-blue-800' : tx.color === 'purple' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}`}>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${getCategoryStyle(tx.category).bgLight} ${getCategoryStyle(tx.category).textDark}`}>
                           {tx.category}
                         </span>
                       </td>
-                      <td className="py-4 whitespace-nowrap text-xs text-gray-500 font-medium">{tx.date?.split ? tx.date.split(',')[0] : tx.date}</td>
-                      <td className="py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">{tx.amount}</td>
+                      <td className="py-4 whitespace-nowrap text-xs text-gray-500 font-medium">
+                        {new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </td>
+                      <td className="py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">₹{tx.amount.toLocaleString()}</td>
                     </tr>
                   )) : (
                     <tr>
