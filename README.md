@@ -1,123 +1,186 @@
-# FinGrow  
+# 💰 FinGrow
+
 **Turn everyday spending into smarter financial growth.**
 
-## 📌 Description  
-FinGrow is a user-focused financial management platform designed to simplify how individuals track, understand, and grow their money. It addresses the common issue of fragmented financial data and the lack of clarity in personal finance management.
+---
 
-The platform delivers a structured and intuitive experience that enables users to monitor expenses, interpret financial behavior, and make informed decisions with greater confidence and control.
+## 🔗 Important Links
+
+* 🎨 **Figma Design:**
+  [https://www.figma.com/design/0DOsKlgOM9gjZfjJigScIo/Untitled?node-id=502-2&t=gYGrinOtzOmRkyWC-1](https://www.figma.com/design/0DOsKlgOM9gjZfjJigScIo/Untitled?node-id=502-2&t=gYGrinOtzOmRkyWC-1)
+
+* 🌐 **Live Project:**
+  [https://fin-grow-wine.vercel.app/](https://fin-grow-wine.vercel.app/)
+
+* 📮 **Postman API Docs:**
+  *https://documenter.getpostman.com/view/50840755/2sBXqKoL8Y*
+
+* ⚙️ **Backend Deployment:**
+  *https://fingrow-flbi.onrender.com/api*
+
+* 🎥 **YouTube Demo:**
+  *https://www.youtube.com/watch?v=yGM2XmgBgVM*
 
 ---
 
-## ⚠️ Problem Statement  
-Managing personal finances remains a significant challenge for many individuals, particularly students and early professionals. Most users rely on scattered methods such as notes, spreadsheets, or memory to track their expenses, which often leads to inconsistency and poor financial visibility.
+## 📌 Project Description
 
-Even when financial data is available, it is rarely presented in a way that is easy to interpret. Users struggle to identify spending patterns, unnecessary expenses, or opportunities to save. This lack of clarity creates a disconnect between earning and managing money effectively.
+FinGrow is a modern financial management platform that helps users track expenses, understand their financial habits, and make smarter financial decisions.
 
-Additionally, investing is often perceived as complex and risky. Without proper guidance or simplified tools, beginners hesitate to explore investment opportunities, limiting their potential for long-term financial growth.
-
----
-
-## 💡 Solution  
-FinGrow addresses these challenges by providing a centralized and user-friendly platform that brings clarity and structure to personal finance management.
-
-The application consolidates financial data into a single, organized dashboard where users can seamlessly track income and expenses. Through intuitive visualizations and analytics, FinGrow transforms raw data into meaningful insights, helping users understand their financial habits and make better decisions.
-
-To reduce the barrier to entry in investing, FinGrow introduces a simplified and guided approach. By presenting investment-related information in a clear and accessible format, the platform minimizes complexity and builds user confidence.
-
-Overall, FinGrow is designed to reduce friction, enhance understanding, and empower users to take control of their financial future.
+It provides a centralized dashboard where users can monitor income, expenses, and insights — making personal finance simple, structured, and accessible.
 
 ---
 
-## ✨ Features  
-- 📊 Expense tracking and categorization  
-- 📈 Interactive dashboard with financial insights  
-- 💼 Beginner-friendly investment guidance  
-- 🔐 Secure authentication and session management
-- 📱 Fully responsive UI/UX using Tailwind CSS and MUI
-- ⚡ React Redux Toolkit for centralized state management
-- 🛠️ Formik and Yup for robust form validation
-- 🌑 Dark/Light mode theme system
-- 🔔 Real-time notifications via React Toastify
-- 📂 File upload with Drag & Drop functionality
-- 🚀 Optimized performance with React Lazy Loading and Suspense
-- 🔍 SEO ready with React Helmet Async
+## ⚠️ Problem Statement
+
+Managing personal finances is difficult, especially for students and early professionals. Most people:
+
+* Use scattered methods like notes or spreadsheets
+* Lack clarity in tracking expenses
+* Cannot identify spending patterns
+* Feel confused about investments
+
+This leads to poor financial decisions and lack of savings or growth.
 
 ---
 
-## 🎨 UI/UX Design  
-The design of FinGrow focuses on clarity, usability, and a premium user experience. Complex financial information is presented in a simple, intuitive, and visually accessible manner.
+## 💡 Solution
 
-🔗 Figma Design Link:  
-https://www.figma.com/design/0DOsKlgOM9gjZfjJigScIo/Untitled?node-id=1-7&t=3O79VtEaP04qoxvV-1
+FinGrow solves these problems by:
+
+* Providing a **centralized dashboard** for all financial activities
+* Converting raw data into **clear visual insights**
+* Helping users track and categorize expenses easily
+* Simplifying investment understanding for beginners
+
+It empowers users to take control of their finances with confidence.
 
 ---
 
-## 🛠️ Tech Stack  
+## ✨ Features
 
-**Frontend**  
-- ⚛️ React.js (Vite)
-- 🎨 Tailwind CSS + Material UI (MUI)
-- 📦 Redux Toolkit (State Management)
-- 🛣️ React Router DOM (Routing)
-- 📝 Formik & Yup (Forms)
-- 📡 Axios (API Integration)
-- 🔔 React Toastify (Notifications)
+* 📊 Expense tracking & categorization
+* 📈 Interactive dashboard with insights
+* 💼 Beginner-friendly investment guidance
+* 🎯 Budget management system
+* 📅 Calendar-based expense tracking
+* 📁 CSV report generation
+* 🔔 Real-time notifications
+* 🌗 Dark/Light mode
+* 📱 Fully responsive UI
+* 🔐 Secure authentication system
 
-**Backend**  
-- 🟢 Node.js  
-- 🚀 Express.js  
+---
 
-**Database**  
-- 🍃 MongoDB  
+## 🔍 SEO Implementation
+
+FinGrow includes proper SEO practices to improve visibility and performance:
+
+* 📌 Meta tags using **React Helmet Async**
+* 📌 Page-specific titles & descriptions
+* 📌 Optimized performance with lazy loading
+* 📌 Clean URL routing structure
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+
+* ⚛️ React.js (Vite)
+* 🎨 Tailwind CSS + Material UI
+* 📦 Redux Toolkit
+* 🛣️ React Router DOM
+* 📝 Formik & Yup
+* 📡 Axios
+* 🔔 React Toastify
+
+### Backend
+
+* 🟢 Node.js
+* 🚀 Express.js
+
+### Database
+
+* 🍃 MongoDB
 
 ---
 
 ## 📂 Folder Structure
-The application follows a highly scalable, feature-based architecture.
 
-```text
+```
 frontend/src/
-├── app/            # Redux store configuration
-├── assets/         # Static assets (images, icons)
-├── components/     # Reusable UI components
-├── features/       # Redux slices grouped by feature (auth, user, ui)
-├── hooks/          # Custom React hooks (useAuth, useDebounce, useAnalytics)
-├── pages/          # Main application views/pages
-├── services/       # Centralized API service with Axios interceptors
-├── utils/          # Utility functions (localStorage/sessionStorage helpers)
-├── App.jsx         # Main application component with Routing setup
-└── main.jsx        # React application entry point with Providers
+├── app/            # Redux store
+├── assets/         # Images & icons
+├── components/     # Reusable components
+├── features/       # Redux slices
+├── hooks/          # Custom hooks
+├── pages/          # Pages/screens
+├── services/       # API calls
+├── utils/          # Helper functions
+├── App.jsx         # Main app
+└── main.jsx        # Entry point
 ```
 
 ---
 
+## 🖼️ Project Screenshots
+
+*(Add screenshots here — dashboard, expense page, insights, etc.)*
+
+---
+
 ## 🚀 Project Setup
-Follow these steps to run the project locally:
 
-1. **Clone the repository:**
-   ```bash
-   git clone <repository_url>
-   cd finGrow/frontend
-   ```
+### 1. Clone Repository
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+```bash
+git clone <repository_url>
+cd finGrow/frontend
+```
 
-3. **Set up Environment Variables:**
-   Create a `.env` file in the frontend root and add:
-   ```env
-   VITE_API_URL=http://localhost:5000/api
-   VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
-   ```
+### 2. Install Dependencies
 
-4. **Run the Development Server:**
-   ```bash
-   npm run dev
-   ```
+```bash
+npm install
+```
 
-5. **Build for Production:**
-   ```bash
-   npm run build
-   ```
+### 3. Environment Variables
+
+Create `.env` file:
+
+```env
+VITE_API_URL=http://localhost:5000/api
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+```
+
+### 4. Run Project
+
+```bash
+npm run dev
+```
+
+### 5. Build
+
+```bash
+npm run build
+```
+
+---
+
+## 📌 Additional Notes
+
+* ✔️ Proper folder structure maintained
+* ✔️ Clean and scalable codebase
+* ✔️ No unnecessary files/folders
+* ✔️ All required features implemented as per Coding Gita README
+
+---
+
+## 🏁 Conclusion
+
+FinGrow is designed to simplify financial management and empower users with clarity, insights, and control over their money.
+
+---
+* Give **PR submission text**
+* Or check if your features match Coding Gita README 1:1 (important for marks 👀)**
