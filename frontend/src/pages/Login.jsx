@@ -78,7 +78,7 @@ const Login = () => {
               dispatch(loginStart());
               // Simulate API Call
               setTimeout(() => {
-                dispatch(loginSuccess({ token: 'dummy-token-12345' }));
+                dispatch(loginSuccess({ token: 'mock_token' }));
                 toast.success('Successfully logged in!');
                 setSubmitting(false);
                 navigate('/dashboard');
